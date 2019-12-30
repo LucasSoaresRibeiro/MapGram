@@ -12,7 +12,8 @@ require([
   "esri/PopupTemplate",
   "esri/geometry/Point",
   "esri/geometry/Mesh",
-], function (request, Map, WebScene, SceneView, TileLayer, GeoJSONLayer, VectorTileLayer, GraphicsLayer, Basemap, Graphic, PopupTemplate, Point, Mesh) {
+  "esri/core/watchUtils",
+], function (request, Map, WebScene, SceneView, TileLayer, GeoJSONLayer, VectorTileLayer, GraphicsLayer, Basemap, Graphic, PopupTemplate, Point, Mesh, watchUtils) {
 
   const R = 6358137; // approximate radius of the Earth in m
   const offset = 300000; // offset from the ground used for the clouds
@@ -139,9 +140,16 @@ require([
     return decodeURIComponent(results[2].replace(/\+/g, ' '));
 }
 
-  var adicionaResultado = function(points, instance){
+  var adicionaResultado = function(instagramData, instance){
 
+    var profile = instagramData.profile;
+    var points = instagramData.points;
     var map = instance.options.map;
+
+    document.getElementById('mapGramUsername').innerText = `by ${profile.full_name}`;
+    document.getElementById('mapGramUsername').hidden = false;
+    document.getElementById('mapGramUrlProfile').src = profile.profile_pic_url;
+    document.getElementById('mapGramUrlProfile').hidden = false;
 
     var markerSymbol = {
       type: "simple-marker",
@@ -194,5 +202,18 @@ require([
     'map': map,
     'callback': adicionaResultado
   });
+
+  view.when(function () {
+    watchUtils.whenFalseOnce(view, "updating", rotate);
+  });
+
+  function rotate() {
+    if (!view.interacting) {
+      const camera = view.camera.clone();
+      camera.position.longitude -= 0.2;
+      view.goTo(camera, { animate: false });
+      requestAnimationFrame(rotate);
+    }
+  };
 
 });

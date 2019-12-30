@@ -21,6 +21,16 @@ var InstagramToArcGISGraphic = (function(){
                 'username': this.options.username,
                 'get_data': true,
                 'callback': function(data){
+
+                    let profile = {
+                       "full_name": data.full_name,
+                       "username": data.username,
+                       "profile_pic_url": data.profile_pic_url,
+                       "profile_pic_url_hd": data.profile_pic_url_hd,
+                       "biography": data.biography,
+                       "followed_by": data.edge_followed_by.count,
+                       "follow": data.edge_follow.count,
+                    }
                 
                     let points = [];
                     let photos = data.edge_owner_to_timeline_media.edges;
@@ -43,19 +53,25 @@ var InstagramToArcGISGraphic = (function(){
                             })
                         }
                     });
-                    callback(points, _this);
+
+                    let instagramData = {
+                        "profile": profile,
+                        "points": points
+                    }
+
+                    callback(instagramData, _this);
                 }
             });
         };
         
-        this.addLocation = function(callback, points){
+        this.addLocation = function(callback, instagramData){
             
             var _this = this;
             var promises = [];
 
-            points.forEach(point => {
+            instagramData.points.forEach(point => {
                 var currentPromise = new Promise(function(resolve, reject) {
-                    let url = `http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?SingleLine=${point.attributes.location}&f=json&maxLocations=1`
+                    let url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?SingleLine=${point.attributes.location}&f=json&maxLocations=1`
                     var xhr = new XMLHttpRequest();
                     xhr.onload = function(e){
                         if(xhr.readyState === 4){
@@ -81,7 +97,7 @@ var InstagramToArcGISGraphic = (function(){
             });
 
             Promise.all(promises).then(function(values) {
-                callback(points, _this);
+                callback(instagramData, _this);
             });
         };
 
