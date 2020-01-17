@@ -3,17 +3,16 @@ require([
   "esri/Map",
   "esri/WebScene",
   "esri/views/SceneView",
-  "esri/layers/TileLayer",
-  "esri/layers/GeoJSONLayer",
   "esri/layers/VectorTileLayer",
   "esri/layers/GraphicsLayer",
-  "esri/Basemap",
   "esri/Graphic",
   "esri/PopupTemplate",
   "esri/geometry/Point",
   "esri/geometry/Mesh",
+  "esri/geometry/geometryEngine",
   "esri/core/watchUtils",
-], function (request, Map, WebScene, SceneView, TileLayer, GeoJSONLayer, VectorTileLayer, GraphicsLayer, Basemap, Graphic, PopupTemplate, Point, Mesh, watchUtils) {
+  "esri/geometry/support/webMercatorUtils"
+], function (request, Map, WebScene, SceneView, VectorTileLayer, GraphicsLayer, Graphic, PopupTemplate, Point, Mesh, geometryEngine, watchUtils, webMercatorUtils) {
 
   const R = 6358137; // approximate radius of the Earth in m
   const offset = 300000; // offset from the ground used for the clouds
@@ -191,7 +190,8 @@ require([
     });
 
     // create layer
-    var graphicsLayer = new GraphicsLayer();
+    let graphicsLayer = new GraphicsLayer();
+    graphicsLayer.id = 'photos'
     graphicsLayer.graphics.addMany(graphics);
     map.add(graphicsLayer);
   };
@@ -215,5 +215,32 @@ require([
       requestAnimationFrame(rotate);
     }
   };
+
+  view.on('click', function (event) {
+
+    let graphicLayer = view.map.findLayerById('photos');
+
+    if (graphicLayer) {
+
+      let mapPointBuffer = geometryEngine.buffer(event.mapPoint, 500, 'kilometers');      
+
+      const filteredGraphics = graphicLayer.graphics.filter(function(graphic) {
+        let mapPointWgs84 = webMercatorUtils.geographicToWebMercator(graphic.geometry);
+        let intersectResult = geometryEngine.intersects(this.mapPointBuffer, mapPointWgs84);
+        return intersectResult;
+
+      }, { 'mapPointBuffer': mapPointBuffer });
+
+      if (filteredGraphics.length > 0) {
+        view.popup.open({
+          features: filteredGraphics,
+          location: event.mapPoint,
+          updateLocationEnabled: true
+        });
+      }
+
+    }
+
+  });
 
 });
